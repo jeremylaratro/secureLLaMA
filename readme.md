@@ -4,7 +4,7 @@ This project has been created as a part of my masters degree in cybersecurity. T
 ![RiskReduction](https://github.com/jeremylaratro/secure_intelligence_masters/blob/master/diagrams/Screenshot_20-Dec_15-36-41_30408.png)
 
 
-### Components
+## Components
 The project consists of three major components:
 1. A central host server, using Fedora SilverBlue or SecureBlue
 2. A Docker container running the LLM via Torchrun, with gradio to serve the app through a web UI locally
@@ -22,3 +22,61 @@ This repository contains the following:
 The project is intended to serve as a replacement for AIaaS products in corporate settings, with strict ACL integration for extensive network segmentation between the AI server and other vLANS.
 
 ![vlAN/ACLs](https://github.com/jeremylaratro/secure_intelligence_masters/blob/master/diagrams/Screenshot_20-Dec_10-25-12_8371.png?raw=true)
+
+## Usage
+This repo consists of everything needed to run the Llama3-2.1B-Instruct model, minus the consolidated.00.pth file due to size constraints of github. Download the model via Huggingface or directly from Meta. The script should be compatible with all models, but all of the files in model minus the python script must be changed out if switching models (i.e., params.json, tokenizer, etc.)
+
+First, clone the directory.
+```bash
+git clone https://github.com/jeremylaratro/secure_intelligence_masters.git
+```
+Execute the Dockerfile
+```bash
+sudo docker -t ai_container_v3_0_1 build . 
+```
+Run the container
+```bash
+sudo docker run --privileged --runtime=nvidia --gpus all -it solution_container_v1_6 bash
+```
+Within the container, verify GPU passthrough with nvidia-smi command.
+If successful, execute the model:
+```bash
+torchrun --nproc_per_node=1 ai_solution_v3_0_1.py --ckpt_dir ./ --tokenizer_path ./tokenizer.model --max_seq_len 8192 --max_batch_size 8
+```
+Note: The following switch is dependent upon the number of GPUs you have/want to use. 
+--nproc_per_node={integer}
+  - If you have one GPU, keep at 1. If two GPUs, set the number to 2, etc.
+
+----
+
+## Hardening
+
+For hardening measures, the included scripts install and set up snort, auditd, ufw, collectd, and clamav.
+
+- Script for hardening vanilla Fedora install. Adopted from https://github.com/RoyalOughtness/fedora-hardened/blob/main/harden.sh
+```bash
+./hardening.sh
+```
+- Script for installing core requirements for VM and containers on host
+```bash
+./host.sh
+```
+
+- Script for installing snort (for Fedora and Debian)
+Fedora:
+```bash
+./snort.sh
+```
+Debian / Container:
+```
+./snort_container.sh
+```
+
+- Script for running Snort3 in daemon mode, establishing ClamAV and Freshclam cronjobs, and enabling extended logging capabilities
+```bash
+./monitor_all.sh
+```
+
+
+
+
