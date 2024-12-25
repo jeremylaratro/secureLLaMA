@@ -7,6 +7,7 @@ This project is meant to serve as a comprehensive solution consisting of three c
 2. A Docker container running the LLM via Torchrun, with gradio to serve the app through a web UI locally
 3. (Optional) A qemu/virt-manager VM to serve as a web proxy
 
+![System Architecture](https://github.com/jeremylaratro/secure_intelligence_masters/blob/master/diagrams/Screenshot_19-Dec_18-29-19_7194.png)
 
 This repository contains the following:
 - LLM Python script to interface with the LLAMA model
