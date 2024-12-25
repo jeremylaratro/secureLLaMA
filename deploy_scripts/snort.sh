@@ -6,7 +6,7 @@ apt-get install -y \
     cmake xz-utils dh-autoreconf autoconf automake libtool m4 make gettext pkg-config \
     libdnet-dev flex g++ hwloc hwloc-dev libssl-dev libpcap-dev libpcre3 libpcre3-dev \
     luajit libluajit-5.1-dev uuid-dev libhyperscan-dev flatbuffers-dev libjemalloc-dev zlib1g zlib1g-dev \
-    wget git tar build-essential check openssl libssl-dev libpcap-dev libjemalloc-dev
+    wget git tar build-essential check openssl libssl-dev libpcap-dev libjemalloc-dev clamav
 
 # Define program directory
 program_dir="/root/programs"
