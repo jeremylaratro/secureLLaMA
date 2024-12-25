@@ -39,7 +39,7 @@ git clone https://github.com/jeremylaratro/secure_intelligence_masters.git
 ```
 Execute the Dockerfile
 ```bash
-sudo docker -t ai_container_v3_0_1 build . 
+sudo docker -t ai_container_v3_0_5 build . 
 ```
 Run the container
 ```bash
