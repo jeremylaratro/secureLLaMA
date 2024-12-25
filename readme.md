@@ -1,8 +1,10 @@
 # Airgapped AI for Enhanced Data Security
 This project has been created as a part of my masters degree in cybersecurity. The project aims to create a simple, effective solution for countering the massive data privacy issues associated with the AIaaS model. It does this by simplifying the process for locally managed, private AI using a streamlined DevOps pipeline focused on deployment scripting and automation. The core component of the project is a custom-made LLAMA interface script which executes Meta's Llama model directly using Torchrun. Gradio is used for a locally hosted web server, with SSL implementation for secure web traffic.
 
+Web UI using Gradio
 ![Interface](https://github.com/jeremylaratro/secure_intelligence_masters/blob/main/diagrams/Screenshot_21-Dec_16-00-49_18923.png?raw=true)
 
+Risk reduction workflow
 ![RiskReduction](https://github.com/jeremylaratro/secure_intelligence_masters/blob/master/diagrams/Screenshot_20-Dec_15-36-41_30408.png)
 
 
