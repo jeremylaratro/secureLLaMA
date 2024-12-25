@@ -1,3 +1,5 @@
+# File: llama_chatbot_fixed.py
+
 import os
 from typing import List, Optional
 import torch
@@ -5,23 +7,24 @@ from llama import Dialog, Llama
 import gradio as gr
 import fire
 
-# Set environment variable to reduce memory fragmentation
+# Set up environment variable to manage GPU memory allocation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def truncate_context(dialog: List[Dialog], max_tokens: int) -> List[Dialog]:
-    """Truncates the dialog context to ensure it doesn't exceed max_tokens."""
+    """Keep the dialog history under the max token limit by removing the oldest messages."""
     def count_tokens(dialog: List[Dialog]) -> int:
         return sum(len(message["content"].split()) for message in dialog)
 
     while count_tokens(dialog) > max_tokens:
-        dialog.pop(0)  # Remove the oldest message
+        removed_message = dialog.pop(0)  # Drop the oldest message
+        print(f"[Debug] Removed message to stay within token limit: {removed_message}")
     return dialog
 
 
 def clear_cache():
-    """Clear GPU memory proactively and efficiently."""
-    torch.cuda.synchronize()  # Ensure all computations are complete
-    torch.cuda.empty_cache()  # Free unallocated memory
+    """Proactively free up GPU memory to avoid out-of-memory errors."""
+    torch.cuda.synchronize()
+    torch.cuda.empty_cache()
 
 
 class LlamaChat:
@@ -34,7 +37,7 @@ class LlamaChat:
         max_seq_len: int = 512,
         max_batch_size: int = 1,
         max_gen_len: Optional[int] = None,
-        token_limit: int = 1000,  # Maximum tokens in the dialog history
+        token_limit: int = 1000,
     ):
         self.temperature = temperature
         self.top_p = top_p
@@ -42,7 +45,7 @@ class LlamaChat:
         self.token_limit = token_limit
         self.dialog: List[Dialog] = []
 
-        # Initialize the generator
+        # Initialize the Llama generator
         self.generator = Llama.build(
             ckpt_dir=ckpt_dir,
             tokenizer_path=tokenizer_path,
@@ -52,50 +55,60 @@ class LlamaChat:
         print("[System]: Generator initialized successfully.")
 
     def chat(self, user_input: str) -> str:
-        """Handles the chat interactions."""
-        self.dialog.append({"role": "user", "content": user_input})
+        """Process user input and generate a response."""
+        directive = "\n[Please provide a summary of the response in 50 words OR LESS. Include it at the END of the response. Start the summary with the word 'summary' on a newline without quotes.]"
+        user_input_with_directive = user_input + directive
 
-        # Generate a response
+        # Generate a response using the directive-enhanced input
         try:
             results = self.generator.chat_completion(
-                [self.dialog],
+                [self.dialog + [{"role": "user", "content": user_input_with_directive}]],
                 max_gen_len=self.max_gen_len,
                 temperature=self.temperature,
                 top_p=self.top_p,
             )
         except torch.cuda.OutOfMemoryError:
             clear_cache()
-            return "[Error]: CUDA out of memory. Please try again."
+            return "[Error]: CUDA ran out of memory. Try again later."
         except Exception as e:
-            return f"[Error]: chat_completion failed: {e}"
+            return f"[Error]: Failed to generate a response: {e}"
 
-        # Process the response
         if not results or not isinstance(results, list):
-            return "[Error]: Unexpected results format."
+            return "[Error]: Received an invalid response format."
 
         try:
             response = results[0]["generation"]["content"].strip()
         except (IndexError, KeyError, TypeError):
-            return "[Error]: Failed to extract response content."
+            return "[Error]: Unable to extract content from the response."
 
-        # Extract the summary portion of the response
-        start_marker = "summary"
-        start_idx = response.lower().find(start_marker)
-        if start_idx != -1:
-            summary = response[start_idx:].strip()
-            self.dialog.append({"role": "assistant", "content": summary})
-        else:
-            self.dialog.append({"role": "assistant", "content": response})
+        # Extract or truncate the summary
+        summary = self._extract_summary(response)
+        self.dialog.append({"role": "assistant", "content": summary})
+        print(f"[Debug] Summary added to dialog: {summary}")
 
-        # Truncate the dialog context
-        if len(self.dialog) > 850:
-            self.dialog = truncate_context(self.dialog, self.token_limit)
+        # Monitor the current dialog state
+#        print(f"[Debug] Current dialog context: {self.dialog}")
+
+        # Remove old messages if the history exceeds token limits
+        self.dialog = truncate_context(self.dialog, self.token_limit)
+        print(f"[Debug] Updated dialog context after truncation: {self.dialog}")
 
         return response
 
+    def _extract_summary(self, response: str) -> str:
+        """Extract the 50-word summary from the response."""
+        start_marker = "summary"
+        start_idx = response.lower().find(start_marker)
+        if start_idx != -1:
+            if len(response) < 10:
+                return " ".join(response.split()[:50])
+            else:
+                return response[start_idx:].strip()
+        return " ".join(response.split()[:50])
+
 
 def gradio_chat(user_input, chat_history, llama_chat):
-    """Interactive chat function for Gradio."""
+    """Handle chat interactions for the Gradio interface."""
     response = llama_chat.chat(user_input)
     chat_history.append((user_input, response))
     return chat_history, chat_history
@@ -122,57 +135,40 @@ def launch_gradio(
         token_limit=token_limit,
     )
 
-    # Gradio UI components
     with gr.Blocks() as demo:
-        chat_history = gr.State([])  # Chat history state
-
-        # Add custom height to the chatbot using a wrapping container
+        chat_history = gr.State([])
         chatbot = gr.Chatbot(label="Llama Chatbot", elem_id="chatbot")
         user_input = gr.Textbox(
             label="Your Input",
             placeholder="Type your message here...",
-            lines=2,
+            show_label=False,  # Hide the label for cleaner UI
         )
         send_button = gr.Button("Send")
 
         def process_message(user_input, chat_history):
-            """Handles message processing and clears the input."""
+            """Process user message and clear the input field."""
             new_history, updated_chat = gradio_chat(user_input, chat_history, llama_chat)
-            return updated_chat, new_history, ""  # Clear the input
+            return updated_chat, new_history, ""  # Clear the input field
 
-        # "Enter" Key to Submit
         user_input.submit(
             process_message,
             inputs=[user_input, chat_history],
             outputs=[chatbot, chat_history, user_input],
         )
-
-        # Button Click to Submit
         send_button.click(
             process_message,
             inputs=[user_input, chat_history],
             outputs=[chatbot, chat_history, user_input],
         )
 
-    # Custom CSS for chatbot size
     demo.css = """
     #chatbot {
-        height: 600px; /* Set the height of the chatbot */
-        overflow-y: auto; /* Allow vertical scrolling */
+        height: 600px;
+        overflow-y: auto;
     }
     """
-
-    # Launch Gradio on 0.0.0.0
     demo.launch(server_name="0.0.0.0", server_port=7860)
 
 
 if __name__ == "__main__":
     fire.Fire(launch_gradio)
-
- 
-
- 
-
- 
-
- 
