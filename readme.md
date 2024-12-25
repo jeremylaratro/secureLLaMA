@@ -5,13 +5,14 @@ This project has been created as a part of my masters degree in cybersecurity. T
 
 
 ## Components
+### System
 The project consists of three major components:
 1. A central host server, using Fedora SilverBlue or SecureBlue
-2. A Docker container running the LLM via Torchrun, with gradio to serve the app through a web UI locally
+2. A Docker container (Ubuntu/CUDA base) running the LLM via Torchrun, with gradio to serve the app through a web UI locally
 3. (Optional) A qemu/virt-manager VM to serve as a web proxy
 
 ![System Architecture](https://github.com/jeremylaratro/secure_intelligence_masters/blob/master/diagrams/Screenshot_19-Dec_18-29-19_7194.png)
-
+### Software
 This repository contains the following:
 - LLM Python script to interface with the LLAMA model
 - Dockerfile to deploy the application
@@ -57,22 +58,23 @@ For hardening measures, the included scripts install and set up snort, auditd, u
 ```bash
 ./hardening.sh
 ```
-- Script for installing core requirements for VM and containers on host
+- Script for installing core requirements for VM and containers on host.
 ```bash
 ./host.sh
 ```
 
-- Script for installing snort (for Fedora and Debian)
-Fedora:
+- Script for installing snort.
+Run on host:
 ```bash
 ./snort.sh
 ```
-Debian / Container:
+Run in container:
 ```
 ./snort_container.sh
 ```
 
-- Script for running Snort3 in daemon mode, establishing ClamAV and Freshclam cronjobs, and enabling extended logging capabilities
+- Script for running Snort3 in daemon mode, establishing ClamAV and Freshclam cronjobs, and enabling extended logging capabilities.
+- Run on host and inside container.
 ```bash
 ./monitor_all.sh
 ```
