@@ -39,7 +39,7 @@ git clone https://github.com/jeremylaratro/secure_intelligence_masters.git
 ```
 Execute the Dockerfile
 ```bash
-sudo docker -t ai_container_v3_0_5 build . 
+sudo docker -t ai_container_v3_0_x build . 
 ```
 Run the container
 ```bash
@@ -48,7 +48,7 @@ sudo docker run --privileged --runtime=nvidia --gpus all -it solution_container_
 Within the container, verify GPU passthrough with nvidia-smi command.
 If successful, execute the model:
 ```bash
-torchrun --nproc_per_node=1 ai_solution_v3_0_1.py --ckpt_dir ./ --tokenizer_path ./tokenizer.model --max_seq_len 8192 --max_batch_size 8
+torchrun --nproc_per_node=1 ai_solution_v3_0_x.py --ckpt_dir ./ --tokenizer_path ./tokenizer.model --max_seq_len 8192 --max_batch_size 8
 ```
 Note: The following switch is dependent upon the number of GPUs you have/want to use. 
 --nproc_per_node={integer}
