@@ -1,25 +1,58 @@
 #!/bin/bash
+set -euo pipefail
+trap 'echo "Error on line $LINENO"; exit 1' ERR
 
-/usr/local/snort/bin/snort -D -i $(ifconfig | awk '{print $1}' | grep : | tr -d : | tr -d lo) -c /usr/local/snort/etc/snort/snort.lua --rule-path /usr/local/snort/etc/snort/rules --daq-dir /usr/local/lib/daq/ -l /var/log/snort
+# This script is for host monitoring
+# For full monitoring setup, use monitor_all.sh
 
-cat <<EOF > /etc/cron.d/clam.sh
+INTERFACE="${1:-$(ip route | grep default | awk '{print $5}' | head -n1)}"
+
+if [ -z "$INTERFACE" ]; then
+    echo "Warning: Could not detect network interface, using 'eth0'"
+    INTERFACE="eth0"
+fi
+
+echo "Starting host monitoring services on interface: $INTERFACE"
+
+# Start Snort3 in daemon mode
+if command -v /usr/local/snort/bin/snort &> /dev/null; then
+    echo "Starting Snort3 IDS..."
+    /usr/local/snort/bin/snort -D -i "$INTERFACE" \
+        -c /usr/local/snort/etc/snort/snort.lua \
+        --rule-path /usr/local/snort/etc/snort/rules \
+        --daq-dir /usr/local/lib/daq/ \
+        -l /var/log/snort
+else
+    echo "Warning: Snort3 not found, skipping IDS setup"
+fi
+
+# Create ClamAV scan script
+CLAM_SCRIPT="/usr/local/bin/clam_scan.sh"
+cat <<'EOF' > "$CLAM_SCRIPT"
 #!/bin/bash
-# Directory to scan
 SCAN_DIR="/"
-
-# Log file for clamscan
 LOG_FILE="/var/log/clamav/daily-scan.log"
-
-# Run clamscan
-clamscan -r $SCAN_DIR --exclude-dir="^/sys" --exclude-dir="^/proc" --exclude-dir="^/dev" --log=$LOG_FILE
+mkdir -p /var/log/clamav
+clamscan -r "$SCAN_DIR" \
+    --exclude-dir="^/sys" \
+    --exclude-dir="^/proc" \
+    --exclude-dir="^/dev" \
+    --log="$LOG_FILE"
 EOF
 
-chmod +x /usr/local/bin/clam.sh
-# Define the cron job
-CRON_JOB="0 2 * * * /etc/cron.d/clam.sh"
+chmod +x "$CLAM_SCRIPT"
 
-# Check if the cron job already exists
-(crontab -l 2>/dev/null | grep -F "$CRON_JOB") && echo "Cron job already exists." && exit 0
-# Add the new cron job
-(crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-echo "Cron job added successfully."
+# Setup cron job for daily scan at 2 AM
+CRON_JOB="0 2 * * * $CLAM_SCRIPT"
+if crontab -l 2>/dev/null | grep -qF "$CLAM_SCRIPT"; then
+    echo "ClamAV cron job already exists."
+else
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    echo "ClamAV cron job added successfully."
+fi
+
+# Start auditd
+echo "Starting auditd..."
+service auditd start || systemctl start auditd || echo "Warning: Could not start auditd"
+
+echo "Host monitoring started successfully."

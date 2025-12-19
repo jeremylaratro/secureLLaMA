@@ -1,0 +1,18 @@
+# SecureLLaMA Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Deep Learning Framework (use appropriate CUDA version)
+# For CUDA 11.8:
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Hugging Face Transformers
+transformers>=4.30.0
+
+# CLI argument parsing
+fire>=0.5.0
+
+# Web interface
+gradio>=4.0.0
