@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+trap 'echo "Error on line $LINENO"; exit 1' ERR
 
 if [ "$(id -u)" != "0" ]; then
     echo "This script must be run as root."
@@ -58,7 +60,7 @@ chmod 700 /etc/cron.d
 chmod 700 /etc/cron.daily/
 chmod 700 /etc/cron.daily
 chmod 700 /etc/cron.hourly
-chmod 700 /etc/cron.weeklya
+chmod 700 /etc/cron.weekly
 chmod 700 /etc/cron.monthly
 
 echo "Installing dnf-automatic and chkrootkit..."
